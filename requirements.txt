@@ -1,0 +1,5 @@
+pandas
+numpy
+datetime
+PyQt5
+openpyxl
