@@ -1,3 +1,3 @@
-## Data Science Project Template
+## Deakin Active - Reporting Automation
 
-You can use this template to structure your Python data science projects. It is based on [Cookie Cutter Data Science](https://drivendata.github.io/cookiecutter-data-science/).
+Enter information about project here.
