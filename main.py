@@ -21,12 +21,12 @@ from PySide6.QtWidgets import (
     QDateEdit,
 )
 from PySide6.QtCore import QDate
-from PySide6.QtGui import QIcon  # <--- Import QIcon
+from PySide6.QtGui import QIcon
 
 import functions
 
 
-def resource_path(relative_path):
+def resource_path(relative_path: str) -> str:
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
@@ -47,26 +47,30 @@ class ReportingApp(QWidget):
             "DeakinACTIVE Burwood",
             "DeakinACTIVE Waterfront",
             "DeakinACTIVE Warrnambool",
-            # Consider adding a "--Select Club--" if appropriate for your logic
         ]
-        # Default for example_target_club if it's meant to be a placeholder in UI
-        # If it's used to PRESELECT from club_list, ensure it's a valid club_list item
+        # Default for example_target_club. If club_list is empty, it becomes "Select Target Club"
+        # Otherwise, it's the first actual club name for pre-selection demonstration.
         self.example_target_club = (
             self.club_list[0] if self.club_list else "Select Target Club"
         )
         self.example_end_date = str(dt.date.today())
 
         self.initUI()
+        self.setAppIcon()  # Call to set the window icon
 
     def setAppIcon(self):
-        # Try to load the icon.
-        # Place 'app_icon.png' or 'app_icon.ico' in the same directory as main.py,
-        # or provide the full path.
-        icon_path = "icon.png"  # Or your .ico file
-        if os.path.exists(icon_path):
-            self.setWindowIcon(QIcon(icon_path))
-        else:
-            print(f"Warning: Icon file not found at {icon_path}")
+        """Sets the window icon."""
+        icon_filename = "icon.png"  # Your PNG icon file
+        try:
+            icon_path_resolved = resource_path(icon_filename)
+            if os.path.exists(icon_path_resolved):
+                self.setWindowIcon(QIcon(icon_path_resolved))
+            else:
+                print(
+                    f"Warning: Window icon file '{icon_filename}' not found at resolved path: {icon_path_resolved}"
+                )
+        except Exception as e:
+            print(f"Error setting window icon: {e}")
 
     def initUI(self):
         self.setWindowTitle("DeakinACTIVE Reporting Tool")
@@ -137,18 +141,17 @@ class ReportingApp(QWidget):
 
     def on_report_type_change(self, report_name):
         self.output_display.clear()
-        # Reset file label and path if desired when changing report type, or keep it
+        # Optionally reset file label if you want to force re-upload for each report type change
         # self.file_label.setText("No file selected.")
         # self.file_path = None
 
         if report_name in ["Current Members", "New Members"]:
-            # Set default club in the ComboBox if a valid example is set
             if self.example_target_club in self.club_list:
                 self.target_club_combo.setCurrentText(self.example_target_club)
-            else:  # Default to placeholder or first actual club
+            else:
                 self.target_club_combo.setCurrentIndex(
                     0
-                )  # Assumes "--Select Club--" is index 0
+                )  # Default to "--Select Club--"
 
             q_end_date = QDate.fromString(self.example_end_date, "yyyy-MM-dd")
             if q_end_date.isValid():
@@ -163,19 +166,20 @@ class ReportingApp(QWidget):
         filePath, _ = QFileDialog.getOpenFileName(
             self,
             "Upload Excel File",
-            "",
+            "",  # Start in the last-used directory or a default one
             "Excel Files (*.xlsx *.xls);;All Files (*)",
         )
         if filePath:
             self.file_path = filePath
-            self.file_label.setText(os.path.basename(filePath))
+            self.file_label.setText(
+                os.path.basename(filePath)
+            )  # Use basename for cleaner filename
             self.output_display.setText(
                 f"Selected file: {self.file_path}\nReady to load data."
             )
-            # If a report was already selected, user might expect to generate it
-            # Or clear output: self.output_display.clear()
 
     def _open_file_externally(self, filepath: str):
+        """Attempts to open the given file with its default system application."""
         try:
             abs_filepath = os.path.abspath(filepath)
             if not os.path.exists(abs_filepath):
@@ -191,10 +195,10 @@ class ReportingApp(QWidget):
                 os.startfile(abs_filepath)
             elif sys.platform == "darwin":
                 subprocess.run(["open", abs_filepath], check=True)
-            else:
+            else:  # Linux and other POSIX
                 subprocess.run(["xdg-open", abs_filepath], check=True)
             self.output_display.append(f"\nAttempted to open: {abs_filepath}")
-        except AttributeError:
+        except AttributeError:  # os.startfile might not be available
             try:
                 webbrowser.open("file://" + abs_filepath)
                 self.output_display.append(
@@ -209,7 +213,7 @@ class ReportingApp(QWidget):
                     "File Open Failed",
                     f"Could not automatically open file.\nPlease open it manually from:\n{abs_filepath}",
                 )
-        except FileNotFoundError as e_fnf:
+        except FileNotFoundError as e_fnf:  # For open/xdg-open if command not found
             self.output_display.append(
                 f"\nCould not automatically open file (command not found): {str(e_fnf)}\nPlease open it manually."
             )
@@ -218,7 +222,7 @@ class ReportingApp(QWidget):
                 "File Open Failed",
                 f"Could not automatically open file: Required command not found.\nPlease open it manually from:\n{abs_filepath}",
             )
-        except subprocess.CalledProcessError as e_cpe:
+        except subprocess.CalledProcessError as e_cpe:  # For errors from open/xdg-open
             self.output_display.append(
                 f"\nError opening file with system command: {str(e_cpe)}\nPlease open it manually."
             )
@@ -227,7 +231,7 @@ class ReportingApp(QWidget):
                 "File Open Failed",
                 f"Error opening file: {str(e_cpe)}\nPlease open it manually from:\n{abs_filepath}",
             )
-        except Exception as e:
+        except Exception as e:  # Catch-all for other errors
             self.output_display.append(
                 f"\nCould not automatically open file: {str(e)}\nPlease open it manually."
             )
@@ -237,26 +241,20 @@ class ReportingApp(QWidget):
                 f"Could not automatically open file: {str(e)}\nPlease open it manually from:\n{abs_filepath}",
             )
 
-    # In main.py (ReportingApp class)
-
     def generate_report(self):
         if not self.file_path:
             QMessageBox.warning(self, "Warning", "Please upload an Excel file first.")
-            self.output_display.setText(
-                "Operation cancelled: No Excel file uploaded."
-            )  # Give feedback
+            self.output_display.setText("Operation cancelled: No Excel file uploaded.")
             return
 
         selected_report_name = self.report_combo.currentText()
         if selected_report_name == "--Select Report--":
             QMessageBox.warning(self, "Warning", "Please select a report type.")
-            self.output_display.setText(
-                "Operation cancelled: No report type selected."
-            )  # Give feedback
+            self.output_display.setText("Operation cancelled: No report type selected.")
             return
 
         report_function = self.report_options[selected_report_name]
-        if not report_function:  # Should be caught by the above, but as a safeguard
+        if not report_function:
             self.output_display.setText(
                 f"No function associated with report: {selected_report_name}"
             )
@@ -265,16 +263,12 @@ class ReportingApp(QWidget):
         try:
             self.output_display.setText(
                 f"Loading file: {os.path.basename(self.file_path)}..."
-            )  # Use os.path.basename
+            )
             QApplication.processEvents()
 
-            # Load DataFrame - adjust if specific reports need different sheets/params
             if selected_report_name == "Group Fitness Summary":
                 self.df = pd.read_excel(self.file_path, skiprows=1)
-            # Example: If Booking Zones needed a specific sheet
-            # elif selected_report_name == "Booking Zones Analysis":
-            #     self.df = pd.read_excel(self.file_path, sheet_name="BookingData") # Adjust as needed
-            else:  # Default loading for most reports
+            else:
                 self.df = pd.read_excel(self.file_path, engine="openpyxl")
 
             self.output_display.append(
@@ -282,33 +276,25 @@ class ReportingApp(QWidget):
             )
             QApplication.processEvents()
 
-            # --- Special handling for Booking Zones Analysis (auto CSV download & open) ---
             if selected_report_name == "Booking Zones Analysis":
-                # Assuming functions.booking_zones correctly returns a DataFrame
                 result_df = functions.booking_zones(self.df)
-
                 if isinstance(result_df, pd.DataFrame):
                     report_name_slug = "Booking_Zones_Analysis"
-                    # Suggest filename with date
                     suggested_filename = f"{report_name_slug}_report_{dt.date.today().strftime('%Y%m%d')}.csv"
-
                     filePath, _ = QFileDialog.getSaveFileName(
                         self,
                         "Save Booking Zones Report",
                         suggested_filename,
                         "CSV Files (*.csv);;All Files (*)",
                     )
-
                     if filePath:
                         try:
                             result_df.to_csv(filePath, index=False)
                             self.output_display.setText(
                                 f"Report saved to:\n{filePath}\nAttempting to open..."
                             )
-                            QApplication.processEvents()  # Update UI before blocking with file open
-                            self._open_file_externally(
-                                filePath
-                            )  # Assumes this helper method exists
+                            QApplication.processEvents()
+                            self._open_file_externally(filePath)
                         except Exception as e_save_open:
                             QMessageBox.critical(
                                 self,
@@ -326,13 +312,12 @@ class ReportingApp(QWidget):
                     self.output_display.setHtml(
                         f"<b><font color='red'>Error:</font></b> '{selected_report_name}' did not produce valid data for CSV export."
                     )
-                return  # Important: End processing for this specific report here
+                return
 
-            # --- Handling for all other reports ---
             result = None
             if selected_report_name in ["Current Members", "New Members"]:
                 target_club = self.target_club_combo.currentText()
-                if target_club == "--Select Club--":  # Check for placeholder
+                if target_club == "--Select Club--":
                     QMessageBox.warning(
                         self,
                         "Parameter Missing",
@@ -344,12 +329,10 @@ class ReportingApp(QWidget):
                     return
                 end_date_str = self.end_date_edit.date().toString("yyyy-MM-dd")
                 result = report_function(self.df, target_club, end_date_str)
-            else:  # For reports taking only df (e.g., groupFitness, technogym_reporting)
+            else:
                 result = report_function(self.df)
 
-            # Display logic for these other reports
             if result is not None:
-                # Prepare titles
                 html_title = f"<h3>--- {selected_report_name} Results ---</h3>"
                 plain_text_title = f"--- {selected_report_name} Results ---\n\n"
 
@@ -357,12 +340,10 @@ class ReportingApp(QWidget):
                     formatted_string = result.to_string(
                         index=False, justify="left", float_format="{:.2f}".format
                     )
-                    # For DataFrames, wrap in <pre> for good monospace display within HTML context
                     self.output_display.setHtml(
                         f"{html_title}<pre>{formatted_string}</pre>"
                     )
                 elif isinstance(result, str):
-                    # Basic check for HTML tags to decide rendering method
                     is_html_result = any(
                         tag in result.lower()
                         for tag in ["<table", "<p>", "<h3>", "<b>", "<br>", "<font"]
@@ -371,7 +352,7 @@ class ReportingApp(QWidget):
                         self.output_display.setHtml(html_title + result)
                     else:
                         self.output_display.setText(plain_text_title + result)
-                else:  # Fallback for any other unexpected type
+                else:
                     self.output_display.setText(plain_text_title + str(result))
             else:
                 self.output_display.setText(
@@ -381,16 +362,14 @@ class ReportingApp(QWidget):
         except FileNotFoundError:
             QMessageBox.critical(self, "Error", f"File not found: {self.file_path}")
             self.output_display.setText(f"Error: File not found {self.file_path}")
-        except ValueError as ve:  # Often from pd.read_excel if file is not a valid Excel, or data conversion issues
+        except ValueError as ve:
             QMessageBox.critical(
                 self, "Data Error", f"Error processing file or data: {ve}"
             )
             self.output_display.setHtml(
                 f"<b><font color='red'>Data Error:</font></b> {ve}<br>Please check if the Excel file is corrupted, has an unexpected format, or if report parameters are valid."
             )
-        except (
-            KeyError
-        ) as ke:  # This is often triggered by wrong Excel file for the selected report
+        except KeyError as ke:
             error_message_for_display = (
                 f"<b><font color='red'>Error: Missing expected column or data.</font></b><br><br>"
                 f"This often means the selected Excel file (<b>{os.path.basename(self.file_path)}</b>) "
@@ -404,7 +383,7 @@ class ReportingApp(QWidget):
                 f"Missing column/data: {ke}. Is this the correct Excel file and sheet for '{selected_report_name}'?",
             )
             self.output_display.setHtml(error_message_for_display)
-        except Exception as e:  # Catch-all for other unexpected errors
+        except Exception as e:
             error_message_for_display = (
                 f"<b><font color='red'>An unexpected error occurred:</font></b><br>"
                 f"Report: '{selected_report_name}'<br>"
@@ -421,12 +400,18 @@ class ReportingApp(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    # Set global application icon (might affect taskbar/dock icon before window shows)
-    # This is more platform and packaging-dependent for its global effect
-    global_icon_path = "icon.png"  # Or your .ico file
-    if os.path.exists(global_icon_path):
-        app.setWindowIcon(QIcon(global_icon_path))
+    try:
+        # Use icon.png for runtime QIcon, PyInstaller --icon will use icon.ico for the .exe
+        app_icon_filename = "icon.png"
+        resolved_app_icon_path = resource_path(app_icon_filename)
+        if os.path.exists(resolved_app_icon_path):
+            app.setWindowIcon(QIcon(resolved_app_icon_path))
+        else:
+            print(
+                f"Warning: Global application icon file '{app_icon_filename}' not found at resolved path: {resolved_app_icon_path}"
+            )
+    except Exception as e:
+        print(f"Error setting global application icon: {e}")
 
     ex = ReportingApp()
-    # ex.setWindowIcon(QIcon(global_icon_path)) # Already called in __init__ via setAppIcon
     sys.exit(app.exec())

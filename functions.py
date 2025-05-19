@@ -193,9 +193,12 @@ def groupFitness(df: pd.DataFrame) -> str:
 
         for club_name in clubs_to_report:
             club_df = df_filtered[df_filtered["Club"] == club_name]
-            num_classes = len(club_df)
+            num_classes = (
+                len(club_df) / 2
+            )  # realised that there are two tables in the sheet, resulting in dupicate rows
             total_attendees = (
                 pd.to_numeric(club_df["UserActive"], errors="coerce").sum()
+                / 2  # Handling dupllicate rows
                 if not club_df.empty
                 else 0
             )
@@ -205,7 +208,7 @@ def groupFitness(df: pd.DataFrame) -> str:
                 f"<td style='padding: 5px 10px 5px 0;'>{club_name}</td>"
             )
             html_output_lines.append(
-                f"<td align='right' style='padding-right: 20px; padding-top: 5px; padding-bottom: 5px;'>{num_classes}</td>"
+                f"<td align='right' style='padding-right: 20px; padding-top: 5px; padding-bottom: 5px;'>{int(num_classes)}</td>"
             )
             html_output_lines.append(
                 f"<td align='right' style='padding-top: 5px; padding-bottom: 5px;'>{int(total_attendees)}</td>"
@@ -226,11 +229,11 @@ def booking_zones(df: pd.DataFrame) -> pd.DataFrame:
     """
     try:
         weights_dict = {
-            "BUR - Badminton Court": 0.16,
-            "WP - Badminton Court": 0.16,
-            "BUR - Court": 0.5,
-            "WP - Court": 0.5,
-            "WP - Athletic Track Lane": 0.25,
+            "BUR - Badminton Court": 1 / 6,
+            "WP - Badminton Court": 1 / 6,
+            "BUR - Court": 1 / 2,
+            "WP - Court": 1 / 2,
+            "WP - Athletic Track Lane": 1 / 4,
         }
 
         required_cols = [
