@@ -86,7 +86,7 @@ class ReportingApp(QWidget):
             print(f"Error setting window icon: {e}")
 
     def initUI(self):
-        self.setWindowTitle("DeakinACTIVE Reporting Tool (Pandas)")  # Updated title
+        self.setWindowTitle("DeakinACTIVE Reporting Tool")  # Updated title
         self.setGeometry(100, 100, 850, 750)
         main_layout = QVBoxLayout()
 
